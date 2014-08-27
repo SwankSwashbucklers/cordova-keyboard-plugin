@@ -162,39 +162,35 @@
         return;
     }
 
-    // No-op on iOS7.  It already resizes webview by default, and this plugin is causing layout issues
-    // with fixed position elements.  We possibly should attempt to implement shringview = false on iOS7.
-    if (!IsAtLeastiOSVersion(@"7.0")) {
-        if (ashrinkView) {
-            [nc removeObserver:_shrinkViewKeyboardShowObserver];
-            _shrinkViewKeyboardShowObserver = [nc addObserverForName:UIKeyboardWillShowNotification
-                                                              object:nil
-                                                               queue:[NSOperationQueue mainQueue]
-                                                          usingBlock:^(NSNotification* notification) {
-                    [weakSelf performSelector:@selector(shrinkViewKeyboardWillShow:) withObject:notification afterDelay:0];
-                }];
+    if (ashrinkView) {
+        [nc removeObserver:_shrinkViewKeyboardShowObserver];
+        _shrinkViewKeyboardShowObserver = [nc addObserverForName:UIKeyboardWillShowNotification
+                                                          object:nil
+                                                           queue:[NSOperationQueue mainQueue]
+                                                      usingBlock:^(NSNotification* notification) {
+                [weakSelf performSelector:@selector(shrinkViewKeyboardWillShow:) withObject:notification afterDelay:0];
+            }];
 
-            [nc removeObserver:_shrinkViewKeyboardHideObserver];
+        [nc removeObserver:_shrinkViewKeyboardHideObserver];
+        _shrinkViewKeyboardHideObserver = [nc addObserverForName:UIKeyboardWillHideNotification
+                                                          object:nil
+                                                           queue:[NSOperationQueue mainQueue]
+                                                      usingBlock:^(NSNotification* notification) {
+                [weakSelf performSelector:@selector(shrinkViewKeyboardWillHide:) withObject:notification afterDelay:0];
+            }];
+    } else {
+        [nc removeObserver:_shrinkViewKeyboardShowObserver];
+        [nc removeObserver:_shrinkViewKeyboardHideObserver];
+
+        // if a keyboard is already visible (and keyboard was shrunk), hide observer will NOT be called, so we observe it once
+        if (self.keyboardIsVisible && _shrinkView) {
             _shrinkViewKeyboardHideObserver = [nc addObserverForName:UIKeyboardWillHideNotification
                                                               object:nil
                                                                queue:[NSOperationQueue mainQueue]
                                                           usingBlock:^(NSNotification* notification) {
-                    [weakSelf performSelector:@selector(shrinkViewKeyboardWillHide:) withObject:notification afterDelay:0];
+                    [weakSelf shrinkViewKeyboardWillHideHelper:notification];
+                    [[NSNotificationCenter defaultCenter] removeObserver:_shrinkViewKeyboardHideObserver];
                 }];
-        } else {
-            [nc removeObserver:_shrinkViewKeyboardShowObserver];
-            [nc removeObserver:_shrinkViewKeyboardHideObserver];
-
-            // if a keyboard is already visible (and keyboard was shrunk), hide observer will NOT be called, so we observe it once
-            if (self.keyboardIsVisible && _shrinkView) {
-                _shrinkViewKeyboardHideObserver = [nc addObserverForName:UIKeyboardWillHideNotification
-                                                                  object:nil
-                                                                   queue:[NSOperationQueue mainQueue]
-                                                              usingBlock:^(NSNotification* notification) {
-                        [weakSelf shrinkViewKeyboardWillHideHelper:notification];
-                        [[NSNotificationCenter defaultCenter] removeObserver:_shrinkViewKeyboardHideObserver];
-                    }];
-            }
         }
     }
 
